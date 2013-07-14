@@ -20,7 +20,7 @@ git clone https://github.com/jlyoung/watchsocket.git
 Modify _watchersdict.py_ before use to specify the paths to monitor and the commands to execute on those paths.
 
 To run:
-_From server's command line:
+_From server's command line:_
 ```
 python server.py
 ```
