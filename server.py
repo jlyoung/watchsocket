@@ -69,15 +69,20 @@ application = tornado.web.Application([
 if __name__ == '__main__':
 	logging.basicConfig(format='[%(asctime)s] %(message)s', level=logging.INFO)
 	application.listen(8888)
-	interval_ms = 5 * 1000
+	default_interval_ms = 5 * 1000
 	main_ioloop = tornado.ioloop.IOLoop.instance()
 	for host_key, host_val in watchers.iteritems():
 		for terminal_key, terminal_val in host_val.iteritems():
-			for k, v in terminal_val.iteritems():
-				if k == "command":
-					logging.info("Creating TaskRunner object for host_key %s, terminal_key %s, command %s" % (host_key,terminal_key,v))
-					task = TaskRunner(host_key, terminal_key, v)
-					logging.info("Creating task_scheduler")			
-					task_scheduler = tornado.ioloop.PeriodicCallback(task.exec_task, interval_ms, io_loop=main_ioloop)
-					task_scheduler.start()
+			if 'interval' in terminal_val:
+				interval_ms = terminal_val['interval']
+			else:
+				interval_ms = default_interval_ms
+			if 'command' in terminal_val:
+				logging.info("Creating TaskRunner object for host_key %s, terminal_key %s, command %s" % (host_key,terminal_key,terminal_val['command']))
+				task = TaskRunner(host_key, terminal_key, terminal_val['command'])
+				logging.info("Creating task_scheduler")			
+				task_scheduler = tornado.ioloop.PeriodicCallback(task.exec_task, interval_ms, io_loop=main_ioloop)
+				task_scheduler.start()
+			else:
+				logging.error('%s : %s does not have a command specified!' % (host_key, terminal_key))
 	main_ioloop.start()
