@@ -12,10 +12,10 @@ class WSHandler(tornado.websocket.WebSocketHandler):
 		self.write_message("Connected %s to %s." % (hostname, terminal))
 		global_message_buffer.wait_for_messages(self.on_new_message, hostname, terminal)
 	def on_message(self, message):
-		print 'message received %s' % message
+		logging.info('message received %s' % message)
 	def on_close(self):
 		self.write_message("Disconnecting.")
-		print 'connection closed'
+		logging.info('connection closed')
 	def on_new_message(self, message):
 		self.write_message(message)
 
@@ -27,20 +27,20 @@ class TaskRunner(object):
 
 	def exec_task(self):
 		try:
-			print "exec_task command = %s" % self.command
+			logging.info("exec_task command = %s" % self.command)
 			message = subprocess.check_output(shlex.split(self.command))
-			print "Command execution output = %s" % message
+			logging.debug("Command execution output = %s" % message)
 			global_message_buffer.new_message(self.hostname, self.terminal, message)
-			print "Adding message to global_message_buffer."
+			logging.info("Adding message to global_message_buffer.")
 		except StopIteration:
-			print "Unable to add new message for hostname %s, terminal %s, message %s " % (self.hostname, self.terminal, message)
+			logging.error("Unable to add new message for hostname %s, terminal %s, message %s " % (self.hostname, self.terminal, message))
 
 class MessageBuffer(object):
 	def __init__(self):
 		self.waiters = set()
 
 	def wait_for_messages(self, callback, hostname, terminal):
-		print "Waiting for messages: hostname %s, terminal %s" % (hostname, terminal)
+		logging.info("Waiting for messages: hostname %s, terminal %s" % (hostname, terminal))
 		self.waiters.add((callback, hostname, terminal))
 
 	def cancel_wait(self, callback, hostname, terminal):
@@ -52,7 +52,8 @@ class MessageBuffer(object):
 			callback, hostname, terminal = cht_tuple
 			if hostname == target_hostname and terminal == target_terminal:
 				try:
-					print "Writing new message for hostname %s, terminal %s: %s" % (hostname, terminal, message)			
+					logging.info("Writing new message for hostname %s, terminal %s." % (hostname, terminal))
+					logging.debug(message)
 					callback(message)
 				except:
 					logging.error("Error in waiter callback for hostname %s, terminal %s" % (hostname, terminal), exc_info=True)
@@ -66,6 +67,7 @@ application = tornado.web.Application([
 ])
 
 if __name__ == '__main__':
+	logging.basicConfig(format='[%(asctime)s] %(message)s', level=logging.INFO)
 	application.listen(8888)
 	interval_ms = 5 * 1000
 	main_ioloop = tornado.ioloop.IOLoop.instance()
@@ -73,9 +75,9 @@ if __name__ == '__main__':
 		for terminal_key, terminal_val in host_val.iteritems():
 			for k, v in terminal_val.iteritems():
 				if k == "command":
-					print "Creating TaskRunner object for host_key %s, terminal_key %s, command %s" % (host_key,terminal_key,v)
+					logging.info("Creating TaskRunner object for host_key %s, terminal_key %s, command %s" % (host_key,terminal_key,v))
 					task = TaskRunner(host_key, terminal_key, v)
-					print "Creating task_scheduler"				
+					logging.info("Creating task_scheduler")			
 					task_scheduler = tornado.ioloop.PeriodicCallback(task.exec_task, interval_ms, io_loop=main_ioloop)
 					task_scheduler.start()
 	main_ioloop.start()
